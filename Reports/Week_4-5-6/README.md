@@ -20,7 +20,7 @@
 Для подтверждения успешного проведения натурного эксперимента ниже представлена фотография нашего стенда. На ней запечатлены два независимых компьютера, к каждому из которых по USB подключена плата ADALM-Pluto (одна выполняет роль передатчика Tx, другая — приемника Rx).
 
 <p align="center">
-  <img src="pluto_setup.jpg" alt="../../Screens/Week_4-5-6/Фотография рабочего места с двумя ADALM-Pluto" width="800" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"/>
+  <img src="pluto_setup.jpg" alt="../../Screens/Week_4-5-6/pluto_setup.jpg" width="800" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"/>
   <br>
   <em>Рис. 1. Рабочее место: стенд с двумя независимыми устройствами ADALM-Pluto, готовыми к передаче сигнала.</em>
 </p>
