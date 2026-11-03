@@ -9,7 +9,6 @@
 
 int main(int argc, char *argv[])
 {
-    // --- Чтение флагов командной строки ---
     int do_tx = 1;
     int do_rx = 1;
 
@@ -24,7 +23,6 @@ int main(int argc, char *argv[])
     }
     printf("Режим: TX=%d, RX=%d | Модуляция: BPSK\n", do_tx, do_rx);
 
-    // Создание сущности устройства
     SoapySDRKwargs args = {};
     SoapySDRKwargs_set(&args, "driver", "plutosdr");
     if (1) {
@@ -63,7 +61,6 @@ int main(int argc, char *argv[])
     }
     printf("SoapySDRDevice_getFrequency tx: %lf\n", SoapySDRDevice_getFrequency(sdr, SOAPY_SDR_TX, 0));
     
-    // Настройка каналов и стримов
     size_t channels[] = {0} ; 
 
     size_t channel_count = sizeof(channels) / sizeof(channels[0]);
@@ -95,12 +92,9 @@ int main(int argc, char *argv[])
     int16_t tx_buff[2*tx_mtu];
     int16_t rx_buffer[2*rx_mtu];
 
-    // =========================================================================
-    // ДЗ: 1. Генератор битов -> 2. Модуляция BPSK -> 3. Upsampling -> 4. Свёртка
-    // =========================================================================
     size_t N = tx_mtu;           
     int16_t max_amp = 2000;      
-    size_t sps = 16; // Samples per symbol (сколько отсчетов длится 1 прямоугольный символ)
+    size_t sps = 16;
 
     size_t active_len = N / 2;
     size_t num_bits = active_len / sps; // В BPSK 1 символ = 1 бит
@@ -133,7 +127,6 @@ int main(int argc, char *argv[])
         h[k] = 1.0f;
     }
 
-    // Заполнение буфера tx_buff результатом свёртки
     for (size_t i = 0; i < N; i++)
     {
         if (i < active_len) {
@@ -143,15 +136,14 @@ int main(int argc, char *argv[])
                     sum_I += up_I[i - k] * h[k];
                 }
             }
-            tx_buff[2 * i]     = (int16_t)sum_I; // I-компонента
-            tx_buff[2 * i + 1] = 0;              // Q-компонента в идеальном BPSK всегда 0
+            tx_buff[2 * i]     = (int16_t)sum_I;
+            tx_buff[2 * i + 1] = 0;              
         } else {
             tx_buff[2 * i]     = 0;       
             tx_buff[2 * i + 1] = 0;   
         }
     }
 
-    // Сохраняем локальный дамп для проверки работы математики передатчика
     if (do_tx && !do_rx) {
         FILE *f_tx = fopen("txdata.pcm", "wb");
         if (f_tx) {
@@ -166,7 +158,6 @@ int main(int argc, char *argv[])
         tx_buff[10 + i] = 0xffff;
     }
 
-    //activate streams
     if (do_rx) SoapySDRDevice_activateStream(sdr, rxStream, 0, 0, 0); 
     if (do_tx) SoapySDRDevice_activateStream(sdr, txStream, 0, 0, 0); 
 
@@ -180,7 +171,6 @@ int main(int argc, char *argv[])
         file = fopen("txdata.pcm", "wb");
     }
     
-    // RX слушает дольше (20000), чтобы гарантированно поймать эфир
     size_t iteration_count = (do_rx && !do_tx) ? 20000 : 2000;
 
     for (size_t buffers_read = 0; buffers_read < iteration_count; buffers_read++)
