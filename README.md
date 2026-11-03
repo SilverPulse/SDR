@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Analysis-Python_3_%7C_NumPy_%7C_Matplotlib-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Build-CMake-064F8C?style=flat-square&logo=cmake&logoColor=white" alt="CMake" />
 </div>
----
+
 
 ## Программно-определяемый приемопередатчик на базе Adalm-Pluto SDR
 
