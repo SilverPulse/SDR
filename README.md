@@ -34,13 +34,12 @@
 
 | Недели | Тема лабораторной работы | Ключевые технологии и результаты | Статус | Папка с отчетом |
 | :---: | :--- | :--- | :---: | :---: |
-| **1–2** | GNU Radio. Построение FM-радиоприемника | Децимация, ФНЧ, демодуляция WBFM, анализ спектра на 101.1 МГц | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_1-2](Week_1-2/) |
-| **3** | Инициализация ADALM-Pluto и аппаратные метки времени (Timestamp) | SoapySDR, `timestamp_every=1920`, проверка интервала 1.92 мс | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_3](Week_3/) |
-| **4–6** | Работа с I/Q-буферами и радиоканал между платами | Формирование огибающей, синхронизация RX/TX, передача по эфиру | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_4-5-6](Week_4-5-6/) |
-| **7** | Разделение ролей TX/RX и подготовка модуляции | Настройка `txStream` и `rxStream`, передача тестовых массивов | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week 7](Week%207/) |
-| **8** | Передатчик BPSK, дискретная свертка и анализ радиоканала | Upsampling, свертка, исследование CFO и утечки (LO Leakage) | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week 8](Week%208/) |
-| **9** | Приемник. Детерминированный кадр и выбор символьных отсчетов | Передача ASCII, генерация `message.h`, децимация по 10 фазам | ![Done](https://img.shields.io/badge/Готово-00599C?style=flat-square) | [Week_9](Week_9/) |
-
+| **1–2** | GNU Radio. Построение FM-радиоприемника | Децимация, ФНЧ, демодуляция WBFM, анализ спектра на 101.1 МГц | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_1-2](Reports/Week_1-2/) |
+| **3** | Инициализация ADALM-Pluto и аппаратные метки времени (Timestamp) | SoapySDR, `timestamp_every=1920`, проверка интервала 1.92 мс | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_3](Reports/Week_3/) |
+| **4–6** | Работа с I/Q-буферами и радиоканал между платами | Формирование огибающей, синхронизация RX/TX, передача по эфиру | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_4-5-6](Reports/Week_4-5-6/) |
+| **7** | Разделение ролей TX/RX и подготовка модуляции | Настройка `txStream` и `rxStream`, передача тестовых массивов | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_7](Reports/Week_7/) |
+| **8** | Передатчик BPSK, дискретная свертка и анализ радиоканала | Upsampling, свертка, исследование CFO и утечки (LO Leakage) | ![Done](https://img.shields.io/badge/Сдано-2ea44f?style=flat-square) | [Week_8](Reports/Week_8/) |
+| **9** | Приемник. Детерминированный кадр и выбор символьных отсчетов | Передача ASCII, генерация `message.h`, децимация по 10 фазам | ![Done](https://img.shields.io/badge/Готово-00599C?style=flat-square) | [Week_9](Reports/Week_9/) |
 <!-- ===================================================================== -->
 <!-- КОНЕЦ БЛОКА SUMMARY                                                   -->
 <!-- ===================================================================== -->
