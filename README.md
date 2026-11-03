@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/header_banner.svg" alt="ADALM-Pluto SDR Digital Communication System" width="100%" />
+  <img src="./assets/header_banner.svg?raw=true" alt="ADALM-Pluto SDR Digital Communication System" width="100%" />
 
   <br />
 
@@ -9,7 +9,6 @@
   <img src="https://img.shields.io/badge/Analysis-Python_3_%7C_NumPy_%7C_Matplotlib-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Build-CMake-064F8C?style=flat-square&logo=cmake&logoColor=white" alt="CMake" />
 </div>
-
 ---
 
 ## Программно-определяемый приемопередатчик на базе Adalm-Pluto SDR
@@ -50,9 +49,9 @@
 
 ## Архитектура системы
 
-<div align="center">
-  <img src="assets/dsp_pipeline.svg" alt="DSP Pipeline Architecture" width="100%" />
-</div>
+<p align="center">
+  <img src="./assets/dsp_pipeline.svg?raw=true" alt="DSP Pipeline Architecture" width="100%" />
+</p>
 
 ---
 
