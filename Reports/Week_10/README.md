@@ -1,4 +1,12 @@
 # Отчет по лабораторной работе №10: Согласованная фильтрация на приемнике, выбор символьных отсчетов (10 фаз) и символьная синхронизация Гарднера
+<div align="left">
+  <img src="https://img.shields.io/badge/Week-10_(09.11_--_15.11)-00599C?style=flat-square" alt="Week 10" />
+  <img src="https://img.shields.io/badge/Matched_Filter-Convolution_(SPS=10)-D97706?style=flat-square" alt="Matched Filter" />
+  <img src="https://img.shields.io/badge/Timing_Recovery-Gardner_TED-2E8B57?style=flat-square" alt="Gardner TED" />
+  <img src="https://img.shields.io/badge/GUI_Prep-Dear_ImGui_%2B_SDL2-8A2BE2?style=flat-square" alt="ImGui Prep" />
+</div>
+
+---
 
 ## 1. Постановка задачи и цели недели
 
