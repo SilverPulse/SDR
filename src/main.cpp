@@ -9,7 +9,6 @@
 
 int main(int argc, char *argv[])
 {
-    // --- Чтение флагов командной строки ---
     int do_tx = 1;
     int do_rx = 1;
 
@@ -24,11 +23,9 @@ int main(int argc, char *argv[])
     }
     printf("Режим: TX=%d, RX=%d | Модуляция: BPSK\n", do_tx, do_rx);
 
-    // Создание сущности устройства
     SoapySDRKwargs args = {};
     SoapySDRKwargs_set(&args, "driver", "plutosdr");
     
-    // ВОССТАНОВЛЕНО: Выбор между USB и IP
     if (1) {
         SoapySDRKwargs_set(&args, "uri", "usb:");
     } else {
@@ -47,7 +44,6 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    // Настраиваем устройства RX\TX
     if (SoapySDRDevice_setSampleRate(sdr, SOAPY_SDR_RX, 0, 1e6) != 0) printf("setSampleRate rx fail\n");
     if (SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_RX, 0, 800e6, NULL) != 0) printf("setFrequency rx fail\n");
     if (SoapySDRDevice_setSampleRate(sdr, SOAPY_SDR_TX, 0, 1e6) != 0) printf("setSampleRate tx fail\n");
@@ -61,7 +57,6 @@ int main(int argc, char *argv[])
     SoapySDRStream *rxStream = SoapySDRDevice_setupStream(sdr, SOAPY_SDR_RX, SOAPY_SDR_CS16, channels, channel_count, NULL);
     if (rxStream == NULL) return EXIT_FAILURE;
     
-    // ВОССТАНОВЛЕНО: Проверки ошибок Gain
     if(SoapySDRDevice_setGain(sdr, SOAPY_SDR_RX, channels[0], 30.0) !=0 ){
         printf("setGain rx fail: %s\n", SoapySDRDevice_lastError());
     }
@@ -79,9 +74,6 @@ int main(int argc, char *argv[])
     int16_t tx_buff[2*tx_mtu];
     int16_t rx_buffer[2*rx_mtu];
 
-    // =========================================================================
-    // ДЗ: ФИКСИРОВАННАЯ ПЕРЕДАЧА "Hello Pluto!"
-    // =========================================================================
     size_t N = tx_mtu;           
     int16_t max_amp = 1500;      
     size_t sps = 10; 
@@ -89,7 +81,6 @@ int main(int argc, char *argv[])
     size_t active_len = N / 2;
     size_t num_bits = active_len / sps; 
 
-    // Генератор битов (строка "Hello Pluto!")
     int bits[num_bits];
     const char* message = "Hello Pluto!"; 
     for (size_t i = 0; i < num_bits; i++) {
@@ -126,15 +117,14 @@ int main(int argc, char *argv[])
             for (size_t k = 0; k < sps; k++) {
                 if (i >= k) sum_I += up_I[i - k] * h[k];
             }
-            tx_buff[2 * i]     = (int16_t)sum_I; 
-            tx_buff[2 * i + 1] = 0;              
+            tx_buff[2 * i]     = ((int16_t)sum_I) << 4; 
+            tx_buff[2 * i + 1] = 0;             
         } else {
             tx_buff[2 * i]     = 0;       
             tx_buff[2 * i + 1] = 0;   
         }
     }
 
-    // ВОССТАНОВЛЕНО: Сохранение локального дампа txdata.pcm для передатчика
     if (do_tx && !do_rx) {
         FILE *f_tx = fopen("txdata.pcm", "wb");
         if (f_tx) {
@@ -142,7 +132,7 @@ int main(int argc, char *argv[])
             fclose(f_tx);
         }
         
-        // НОВОЕ: Автогенерация message.h
+        // Автогенерация message.h
         FILE *fh = fopen("message.h", "w");
         if (fh) {
             fprintf(fh, "#ifndef MESSAGE_H\n#define MESSAGE_H\n\nconst int16_t tx_static_buffer[%lu] = {\n    ", 2 * tx_mtu);
@@ -176,7 +166,6 @@ int main(int argc, char *argv[])
         file = fopen("txdata.pcm", "wb");
     }
     
-    // ВОССТАНОВЛЕНО: Умная логика счетчика, но со сниженным окном (3000 для Rx)
     size_t iteration_count = (do_rx && !do_tx) ? 3000 : 2000;
 
     for (size_t buffers_read = 0; buffers_read < iteration_count; buffers_read++)
@@ -190,7 +179,6 @@ int main(int argc, char *argv[])
             int sr = SoapySDRDevice_readStream(sdr, rxStream, rx_buffs, rx_mtu, &flags, &timeNs, timeoutUs);
             if (sr < 0) continue;
             
-            // ВОССТАНОВЛЕНО: Оригинальный принт
             printf("Buffer: %lu - Samples: %i, Flags: %i, Time: %lli, TimeDiff: %lli\n", buffers_read, sr, flags, timeNs, timeNs - last_time);
             fwrite(rx_buffer, 2 * rx_mtu * sizeof(int16_t), 1, file);
             last_time = timeNs;
@@ -198,7 +186,6 @@ int main(int argc, char *argv[])
 
         if (do_tx)
         {
-            // НОВОЕ: Передача через один буфер
             if (buffers_read % 2 == 0) 
             {
                 long long tx_time = last_time + (4 * 1000 * 1000); 
@@ -211,10 +198,9 @@ int main(int argc, char *argv[])
 
                 void *tx_buffs[] = {tx_buff};
                 
-                // ВОССТАНОВЛЕНО: Оригинальный принт и проверка ошибок передачи
                 printf("Transmitting buffer: %zu\n", buffers_read);
-                int flags_tx = 0; 
-                int st = SoapySDRDevice_writeStream(sdr, txStream, (const void * const*)tx_buffs, tx_mtu, &flags_tx, 0, timeoutUs);
+                int flags_tx = SOAPY_SDR_HAS_TIME; 
+                int st = SoapySDRDevice_writeStream(sdr, txStream, (const void * const*)tx_buffs, tx_mtu, &flags_tx, tx_time, timeoutUs);
                 
                 if ((size_t)st != tx_mtu) {
                     printf("TX Failed: %i\n", st);
@@ -231,7 +217,6 @@ int main(int argc, char *argv[])
 
     SoapySDRDevice_unmake(sdr);
 
-    // ВОССТАНОВЛЕНО: Цикл проверки
     for (size_t j = 0; j < channel_count; j++)
     {
         printf("Checking channel %zu\n", j);
