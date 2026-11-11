@@ -27,7 +27,9 @@
 Ниже представлена векторная блок-схема, иллюстрирующая весь конвейер цифровой обработки сигнала на приемнике и физическую природу расслоения созвездия на неверных фазах стробирования:
 
 <div align="center">
-  <img src="../../assets/rx_sync_pipeline.svg?raw=true" alt="Архитектура согласованной фильтрации и синхронизации Гарднера" width="100%" />
+
+![Архитектура согласованной фильтрации и синхронизации](../../assets/rx_sync_pipeline.svg)
+
 </div>
 
 ---
@@ -133,9 +135,7 @@ $$
 
 Формула средней ошибки Гарднера для фазы $m$:
 
-$$
-e(m) = \frac{1}{K} \sum_{k=1}^{K} \text{Re}\left\{ \left(y_{\text{curr}}[k] - y_{\text{prev}}[k]\right)^* \cdot y_{\text{mid}}[k] \right\}
-$$
+$$e(m) = \frac{1}{K} \sum_{k=1}^{K} \text{Re}[ (y_{\text{curr}}[k] - y_{\text{prev}}[k])^* \cdot y_{\text{mid}}[k] ]$$
 
 <div align="center">
   <img src="../../Screens/Week_10/gardner_s_curve.png" alt="S-кривая ошибки Гарднера" width="80%" />
