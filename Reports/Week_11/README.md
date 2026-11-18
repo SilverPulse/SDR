@@ -191,7 +191,7 @@ static GardnerSyncTelemetry RunGardnerSymbolSync(const std::vector<float>& proc_
 Ниже представлен общий вид разработанного графического приложения в момент захвата пакета BPSK и работы замкнутой петли синхронизации Гарднера:
 
 <div align="center">
-  <img src="./../Screens/Week_11/GUI.jpg" alt="Интерактивный дашборд ADALM-Pluto SDR на Dear ImGui" width="100%" />
+  <img src="./../Screens/Week_11/GUI.png" alt="Интерактивный дашборд ADALM-Pluto SDR на Dear ImGui" width="100%" />
   <br>
   <em>Рис. 1. Рабочее окно программы gui: слева — сайдбар управления SDR, навигации и ЦОС; справа — осциллограмма I/Q/|z|, полярное созвездие с захватом CDR и тепловая карта водопада.</em>
 </div>
