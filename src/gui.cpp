@@ -44,8 +44,11 @@ struct SdrControlState {
     std::atomic<bool> tx_rebuild_dirty{false};
     std::atomic<int> mode{2};
     std::atomic<float> rx_gain{30.0f};
-    std::atomic<float> tx_gain{-40.0f};
+    std::atomic<float> tx_gain{-15.0f};
     std::atomic<bool> gain_dirty{false};
+    std::atomic<double> rx_freq_hz{800e6};
+    std::atomic<double> tx_freq_hz{800e6};
+    std::atomic<bool> freq_dirty{false};
     std::atomic<bool> device_connected{false};
 
     std::mutex cfg_mutex;
@@ -137,16 +140,17 @@ static void SdrWorkerThread() {
         AddLog("[SDR] Устройство подключено (" + uri_str + ").");
 
         int current_mode = g_ctrl.mode.load();
-        bool do_rx = (current_mode == 0 || current_mode == 2);
-        bool do_tx = (current_mode == 1 || current_mode == 2);
+        bool show_rx = (current_mode == 0 || current_mode == 2);
+        bool do_tx   = (current_mode == 1 || current_mode == 2);
+        bool need_rx_stream = show_rx || do_tx;
 
         size_t channels[] = {0};
         SoapySDRStream* rxStream = nullptr;
         SoapySDRStream* txStream = nullptr;
 
-        if (do_rx) {
+        if (need_rx_stream) {
             SoapySDRDevice_setSampleRate(sdr, SOAPY_SDR_RX, 0, SAMPLE_RATE);
-            SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_RX, 0, 800e6, nullptr);
+            SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_RX, 0, g_ctrl.rx_freq_hz.load(), nullptr);
             SoapySDRDevice_setGain(sdr, SOAPY_SDR_RX, 0, g_ctrl.rx_gain.load());
             rxStream = SoapySDRDevice_setupStream(sdr, SOAPY_SDR_RX, SOAPY_SDR_CS16, channels, 1, nullptr);
             if (rxStream) SoapySDRDevice_activateStream(sdr, rxStream, 0, 0, 0);
@@ -154,7 +158,7 @@ static void SdrWorkerThread() {
 
         if (do_tx) {
             SoapySDRDevice_setSampleRate(sdr, SOAPY_SDR_TX, 0, SAMPLE_RATE);
-            SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_TX, 0, 800e6, nullptr);
+            SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_TX, 0, g_ctrl.tx_freq_hz.load(), nullptr);
             SoapySDRDevice_setGain(sdr, SOAPY_SDR_TX, 0, g_ctrl.tx_gain.load());
             txStream = SoapySDRDevice_setupStream(sdr, SOAPY_SDR_TX, SOAPY_SDR_CS16, channels, 1, nullptr);
             if (txStream) SoapySDRDevice_activateStream(sdr, txStream, 0, 0, 0);
@@ -171,12 +175,17 @@ static void SdrWorkerThread() {
         ring_Q.reserve(VIEW_SAMPLES * 2);
 
         long long last_time = 0;
-        size_t iter = 0;
+        bool tx_err_logged = false;
 
         while (g_ctrl.sdr_running.load()) {
             if (g_ctrl.gain_dirty.exchange(false)) {
-                if (do_rx) SoapySDRDevice_setGain(sdr, SOAPY_SDR_RX, 0, g_ctrl.rx_gain.load());
+                if (need_rx_stream) SoapySDRDevice_setGain(sdr, SOAPY_SDR_RX, 0, g_ctrl.rx_gain.load());
                 if (do_tx) SoapySDRDevice_setGain(sdr, SOAPY_SDR_TX, 0, g_ctrl.tx_gain.load());
+            }
+
+            if (g_ctrl.freq_dirty.exchange(false)) {
+                if (need_rx_stream) SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_RX, 0, g_ctrl.rx_freq_hz.load(), nullptr);
+                if (do_tx) SoapySDRDevice_setFrequency(sdr, SOAPY_SDR_TX, 0, g_ctrl.tx_freq_hz.load(), nullptr);
             }
 
             if (g_ctrl.tx_rebuild_dirty.exchange(false)) {
@@ -184,41 +193,44 @@ static void SdrWorkerThread() {
                 tx_buff = BuildBpskBuffer(g_ctrl.tx_message, tx_mtu, g_ctrl.tx_conv_enabled.load());
             }
 
-            if (do_rx && rxStream) {
+            if (need_rx_stream && rxStream) {
                 void* buffs[] = {rx_buff.data()};
                 int flags = 0;
                 long long timeNs = 0;
                 int sr = SoapySDRDevice_readStream(sdr, rxStream, buffs, rx_mtu, &flags, &timeNs, 200000);
                 if (sr > 0) {
                     last_time = timeNs;
-                    for (int i = 0; i < sr; ++i) {
-                        ring_I.push_back((float)rx_buff[2 * i]);
-                        ring_Q.push_back((float)rx_buff[2 * i + 1]);
-                    }
-                    if ((int)ring_I.size() >= VIEW_SAMPLES) {
-                        std::lock_guard<std::mutex> lock(iq_mutex);
-                        std::copy(ring_I.end() - VIEW_SAMPLES, ring_I.end(), live_I.begin());
-                        std::copy(ring_Q.end() - VIEW_SAMPLES, ring_Q.end(), live_Q.begin());
-                        has_new_live_frame.store(true);
-                        ring_I.clear();
-                        ring_Q.clear();
+                    if (show_rx) {
+                        for (int i = 0; i < sr; ++i) {
+                            ring_I.push_back((float)rx_buff[2 * i]);
+                            ring_Q.push_back((float)rx_buff[2 * i + 1]);
+                        }
+                        if ((int)ring_I.size() >= VIEW_SAMPLES) {
+                            std::lock_guard<std::mutex> lock(iq_mutex);
+                            std::copy(ring_I.end() - VIEW_SAMPLES, ring_I.end(), live_I.begin());
+                            std::copy(ring_Q.end() - VIEW_SAMPLES, ring_Q.end(), live_Q.begin());
+                            has_new_live_frame.store(true);
+                            ring_I.clear();
+                            ring_Q.clear();
+                        }
                     }
                 }
             }
 
-            if (do_tx && txStream && g_ctrl.tx_enabled.load() && (iter % 2 == 0)) {
+            if (do_tx && txStream && g_ctrl.tx_enabled.load() && last_time > 0) {
                 long long tx_time = last_time + 4000000LL;
                 for (size_t i = 0; i < 8; ++i) {
                     uint8_t b = (tx_time >> (i * 8)) & 0xff;
                     tx_buff[2 + i] = (int16_t)(b << 4);
                 }
                 void* tx_buffs[] = {tx_buff.data()};
-                int flags_tx = do_rx ? SOAPY_SDR_HAS_TIME : 0;
-                SoapySDRDevice_writeStream(sdr, txStream, (const void* const*)tx_buffs, tx_mtu, &flags_tx, tx_time, 200000);
+                int flags_tx = SOAPY_SDR_HAS_TIME;
+                int st = SoapySDRDevice_writeStream(sdr, txStream, (const void* const*)tx_buffs, tx_mtu, &flags_tx, tx_time, 200000);
+                if (st < 0 && !tx_err_logged) {
+                    AddLog("[TX ОШИБКА] writeStream код: " + std::to_string(st));
+                    tx_err_logged = true;
+                }
             }
-
-            if (!do_rx) std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            iter++;
         }
 
         if (rxStream) {
@@ -515,8 +527,10 @@ int main(int argc, char* argv[]) {
     std::vector<float> sym_I, sym_Q;
     std::vector<float> waterfall_grid(WATERFALL_ROWS * WATERFALL_COLS, 0.0f);
 
+    float rx_freq_mhz = 800.0f;
+    float tx_freq_mhz = 800.0f;
     float rx_gain_db = 30.0f;
-    float tx_power_db = -40.0f;
+    float tx_power_db = -15.0f;
     int manual_strobe_phase = 4;
     bool auto_symbol_sync = true;
     bool use_rx_matched_filter = true;
@@ -580,7 +594,10 @@ int main(int argc, char* argv[]) {
                                pause_stream ? "[PCM ФАЙЛ: ПАУЗА]" : "[PCM ФАЙЛ: %.2fx]", playback_speed_x);
         } else if (g_ctrl.device_connected.load()) {
             ImGui::TextColored(ImVec4(0.25f, 0.90f, 0.45f, 1.0f),
-                               g_ctrl.tx_enabled.load() ? "[SDR: RX + TX АКТИВНЫ]" : "[SDR: ТОЛЬКО RX (TX ОСТАНОВЛЕН)]");
+                               g_ctrl.tx_enabled.load()
+                                   ? "[SDR: RX %.2f МГц | TX %.2f МГц]"
+                                   : "[SDR: RX %.2f МГц (TX ПАУЗА)]",
+                               rx_freq_mhz, tx_freq_mhz);
         } else {
             ImGui::TextColored(ImVec4(0.65f, 0.70f, 0.75f, 1.0f), "[ЖИВОЙ ЭФИР SDR: ОЖИДАНИЕ]");
         }
@@ -658,6 +675,8 @@ int main(int argc, char* argv[]) {
         if (ImGui::Button("Запустить SDR", ImVec2(190, 32))) {
             use_pcm_file = false;
             g_ctrl.mode.store(ui_mode);
+            g_ctrl.rx_freq_hz.store((double)rx_freq_mhz * 1e6);
+            g_ctrl.tx_freq_hz.store((double)tx_freq_mhz * 1e6);
             g_ctrl.tx_enabled.store(true);
             g_ctrl.sdr_running.store(true);
         }
@@ -720,8 +739,34 @@ int main(int argc, char* argv[]) {
         }
 
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.45f, 0.80f, 1.0f, 1.0f), "УСИЛЕНИЕ И МОЩНОСТЬ (2x клик = ввод)");
+        ImGui::TextColored(ImVec4(0.45f, 0.80f, 1.0f, 1.0f), "ЧАСТОТА, УСИЛЕНИЕ И МОЩНОСТЬ (2x клик = ввод)");
         ImGui::Separator();
+
+        if (SliderFloatDoubleClick("Частота RX (МГц)", &rx_freq_mhz, 70.0f, 6000.0f, "%.3f МГц")) {
+            g_ctrl.rx_freq_hz.store((double)rx_freq_mhz * 1e6);
+            g_ctrl.freq_dirty.store(true);
+            AddLog("[RF] Частота RX -> " + std::to_string(rx_freq_mhz) + " МГц");
+        }
+        if (SliderFloatDoubleClick("Частота TX (МГц)", &tx_freq_mhz, 70.0f, 6000.0f, "%.3f МГц")) {
+            g_ctrl.tx_freq_hz.store((double)tx_freq_mhz * 1e6);
+            g_ctrl.freq_dirty.store(true);
+            AddLog("[RF] Частота TX -> " + std::to_string(tx_freq_mhz) + " МГц");
+        }
+        if (ImGui::SmallButton("Уравнять TX = RX")) {
+            tx_freq_mhz = rx_freq_mhz;
+            g_ctrl.tx_freq_hz.store((double)tx_freq_mhz * 1e6);
+            g_ctrl.freq_dirty.store(true);
+            AddLog("[RF] Частота TX = RX (" + std::to_string(tx_freq_mhz) + " МГц)");
+        }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("800 МГц")) {
+            rx_freq_mhz = 800.0f;
+            tx_freq_mhz = 800.0f;
+            g_ctrl.rx_freq_hz.store(800e6);
+            g_ctrl.tx_freq_hz.store(800e6);
+            g_ctrl.freq_dirty.store(true);
+            AddLog("[RF] Сброс частот на 800.0 МГц");
+        }
 
         if (SliderFloatDoubleClick("Усиление RX (дБ)", &rx_gain_db, 0.0f, 70.0f, "%.1f дБ")) {
             g_ctrl.rx_gain.store(rx_gain_db);
@@ -864,6 +909,7 @@ int main(int argc, char* argv[]) {
 
         if (ImPlot::BeginPlot("Сигнал во времени (I — Синий, Q — Красный, |z| — Зеленый)", ImVec2(-1, 270))) {
             ImPlot::SetupAxes("Номер отсчета", "Амплитуда");
+            ImPlot::SetupAxesLimits(0, VIEW_SAMPLES, -2200, 2200, ImGuiCond_Once);
             ImPlotSpec spec_i; spec_i.LineColor = ImVec4(0.20f, 0.55f, 1.00f, 1.0f);
             ImPlotSpec spec_q; spec_q.LineColor = ImVec4(0.95f, 0.25f, 0.25f, 1.0f);
             ImPlotSpec spec_m; spec_m.LineColor = ImVec4(0.20f, 0.85f, 0.40f, 1.0f);
